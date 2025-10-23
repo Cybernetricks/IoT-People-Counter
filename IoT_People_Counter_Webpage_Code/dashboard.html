@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <style>
+      .sidebar {
+        width: 200px;
+        background-color: #d1d1d1;
+        height: 100%;
+        position: fixed;
+        margin: 0;
+        padding: 0;
+        overflow: auto;
+      }
+
+      .sidebar p {
+        display: block;
+        color: black;
+        padding: 16px;
+        text-decoration: none;
+      }
+
+      .header-bar {
+        margin-left: 200px;
+        background-color: #d1d1d1;
+        color: #1d8192;
+        padding: 16px;
+      }
+
+      .chart-general {
+        margin-left: 200px;
+      }
+    </style>
+  </head>
+  <body>
+
+    <div class="sidebar">
+      <p id="device1">Device 1</p>
+      <p id="device2">Device 2</p>
+    </div>
+
+    <div class="header-bar">
+      People Counter IoT System
+    </div>
+
+    <div class="chart-general">
+      <canvas id="myChart"></canvas>
+
+      <input type="text" id="date" name="date" placeholder="date">
+      <p id="currentDevice">Device selected: Device one</p>
+    </div>
+    
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.7.1/jquery.min.js"></script>
+    
+    <script>
+      const ctx = document.getElementById('myChart');
+      const dateSelected = document.getElementById('date');
+      const deviceOne = document.getElementById('device1');
+      const deviceTwo = document.getElementById('device2');
+
+      let dataSet = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0];
+      let sensorGroup = "1";
+
+      deviceOne.addEventListener("click", function(){
+        sensorGroup = "1";
+        document.getElementById("currentDevice").innerHTML = "Device selected: Device one";
+        getSensorData();
+      });
+
+      deviceTwo.addEventListener("click", function(){
+        sensorGroup = "2";
+        document.getElementById("currentDevice").innerHTML = "Device selected: Device two";
+        getSensorData();
+      });
+
+      dateSelected.addEventListener('keypress', function(event) {
+        if (event.key == 'Enter') {
+          getSensorData();
+        }
+      });
+
+      function getSensorData() {
+        let request = new XMLHttpRequest();
+        let getUrl = "http://127.0.0.1:8000/getDate.php?"
+        getUrl = getUrl + "eventDateStamp=" + dateSelected.value + "&sensorGroup=" + sensorGroup;
+
+        if (dateSelected.value == "") {
+          dataSet = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0];
+          buildChart(ctx, dataSet);
+        } else {
+          request.open('GET', getUrl, true);
+          request.setRequestHeader("Content-type", "application/x-www-form-urlencoded");
+          request.onreadystatechange = function() {
+            if (request.readyState === XMLHttpRequest.DONE) {
+              let response = JSON.parse(request.response);
+              if (response["success"] === 1) {
+                dataSet = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0];
+                // let response = JSON.parse(request.response);
+                console.log(response);
+                if (response["peopleCounter"]) {
+                  for (const element of response["peopleCounter"]) {
+                    dataSet[Number(element["eventHourStamp"])] = Number(element["count"]);
+                  }
+                  buildChart(ctx, dataSet);
+                } else{
+                  console.log("No response");
+                }
+              }
+            }
+          };
+          request.send();
+        }
+      }
+
+      function buildChart(ctx, dataSet) {
+        if(Chart.getChart("myChart")) {
+          Chart.getChart("myChart")?.destroy()
+        }
+
+        new Chart(ctx, {
+          type: 'line',
+          data: {
+            labels: ['00', '01', '02', '03', '04', '05', '06', '07', '08', '09', '10', '11', '12', '13', '14', '15', '16', '17', '18', '19', '20', '21', '22', '23'],
+            datasets: [{
+              label: 'Count of people',
+              data: dataSet
+            }]
+          },
+          options: {
+            plugins: {
+              title: {
+                display: true,
+                text: 'People Counter Over 24 Hours'
+              }
+            },
+            scales: {
+              x: {
+                display: true,
+                title: {
+                  display: true,
+                  text: 'Hour'
+                }
+              },
+              y: {
+                display: true,
+                title: {
+                  display: true,
+                  text: 'Count'
+                },
+              }
+            }
+          }
+        });
+      }
+    </script>
+  </body>
+</html>
